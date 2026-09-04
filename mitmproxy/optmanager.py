@@ -394,6 +394,15 @@ class OptManager:
                 raise exceptions.OptionsError(f"Option is required: {o.name}")
             else:
                 return None
+        elif o.typespec is float:
+            if optstr:
+                try:
+                    return float(optstr)
+                except ValueError:
+                    raise exceptions.OptionsError(
+                        f"Failed to parse option {o.name}: not a number: {optstr}"
+                    )
+            return o.current()
         elif o.typespec is bool:
             if optstr == "toggle":
                 return not o.current()

@@ -21,7 +21,7 @@ def _ts_type(t):
         return "boolean"
     if t is str:
         return "string"
-    if t is int:
+    if t is int or t is float:
         return "number"
     if t == Sequence[str]:
         return "string[]"

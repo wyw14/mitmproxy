@@ -120,6 +120,10 @@ class Script:
             ctx.master.addons.register(ns)
             self.ns = ns
         if self.ns:
+            # Register the fresh script instance (and its sub-addons) for
+            # fault isolation. State is per instance, so a reloaded script
+            # never inherits the isolation state of its predecessor.
+            ctx.master.addons.isolation.guard(self.ns)
             try:
                 ctx.master.addons.invoke_addon_sync(
                     self.ns, hooks.ConfigureHook(ctx.options.keys())
@@ -161,9 +165,57 @@ class ScriptLoader:
 
     def load(self, loader):
         loader.add_option("scripts", Sequence[str], [], "Execute a script.")
+        loader.add_option(
+            "addon_isolation",
+            bool,
+            False,
+            "Isolate faulty script addons instead of letting a hanging or "
+            "failing addon slow down traffic processing and repeatedly log "
+            "errors. When enabled, a script addon whose awaitable hook exceeds "
+            "addon_isolation_timeout, or that fails addon_isolation_max_failures "
+            "times in a row, is marked as isolated and no longer receives "
+            "traffic hooks (its shutdown cleanup still runs). Isolated addons "
+            "can be re-enabled with the addon.recover command.",
+        )
+        loader.add_option(
+            "addon_isolation_timeout",
+            float,
+            10.0,
+            "Number of seconds after which an awaitable hook of a script "
+            "addon is cancelled and the addon is isolated. Only takes effect "
+            "when addon_isolation is enabled. Set to 0 to disable timeouts.",
+        )
+        loader.add_option(
+            "addon_isolation_max_failures",
+            int,
+            3,
+            "Number of consecutive hook failures after which a script addon "
+            "is isolated. Only takes effect when addon_isolation is enabled. "
+            "Set to 0 to disable failure-based isolation.",
+        )
 
     def running(self):
         self.is_running = True
+
+    @command.command("addon.isolation.options")
+    def addon_isolation_options(self) -> Sequence[str]:
+        """The names of all currently isolated addons."""
+        return [
+            addonmanager._get_name(a)
+            for a in ctx.master.addons.isolation.isolated_addons()
+        ]
+
+    @command.command("addon.recover")
+    @command.argument("name", type=mtypes.Choice("addon.isolation.options"))
+    def addon_recover(self, name: str) -> None:
+        """
+        Re-enable a script addon that was isolated due to a hook timeout or
+        repeated failures.
+        """
+        addon = ctx.master.addons.get(name)
+        if addon is None or not ctx.master.addons.isolation.recover(addon):
+            raise exceptions.CommandError(f"No isolated addon named {name!r}.")
+        logger.info("Recovered addon %s from isolation.", name)
 
     @command.command("script.run")
     def script_run(self, flows: Sequence[flow.Flow], path: mtypes.Path) -> None:
