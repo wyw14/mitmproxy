@@ -30,6 +30,7 @@ from mitmproxy import flowfilter
 from mitmproxy import hooks
 from mitmproxy import http
 from mitmproxy import io
+from mitmproxy import lineage
 from mitmproxy import tcp
 from mitmproxy import udp
 from mitmproxy.log import ALERT
@@ -515,6 +516,7 @@ class View(collections.abc.Sequence):
         """
         for f in flows:
             if f.id not in self._store:
+                lineage.ensure_root(f)
                 self._store[f.id] = f
                 if self.filter(f):
                     self._base_add(f)

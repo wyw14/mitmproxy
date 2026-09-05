@@ -33,6 +33,7 @@ from mitmproxy import contentviews
 from mitmproxy import flowfilter
 from mitmproxy import http
 from mitmproxy import io
+from mitmproxy import lineage
 from mitmproxy import log
 from mitmproxy import optmanager
 from mitmproxy import version
@@ -96,6 +97,14 @@ def flow_to_json(flow: mitmproxy.flow.Flow) -> dict:
         "comment": flow.comment,
         "timestamp_created": flow.timestamp_created,
     }
+
+    if lin := lineage.get(flow):
+        f["lineage"] = {
+            "root_id": lin["root_id"],
+            "parent_id": lin["parent_id"],
+            "attempt": lin["attempt"],
+            "origin": lin["origin"],
+        }
 
     if flow.client_conn:
         f["client_conn"] = {

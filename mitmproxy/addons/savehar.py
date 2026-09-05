@@ -15,6 +15,7 @@ from mitmproxy import exceptions
 from mitmproxy import flow
 from mitmproxy import flowfilter
 from mitmproxy import http
+from mitmproxy import lineage
 from mitmproxy import types
 from mitmproxy import version
 from mitmproxy.addonmanager import Loader
@@ -283,6 +284,17 @@ class SaveHar:
 
             entry["_resourceType"] = "websocket"
             entry["_webSocketMessages"] = websocket_messages
+
+        if lin := lineage.get(flow):
+            # Custom HAR field, preserved on HAR import so that lineage
+            # relationships survive the HAR exchange.
+            entry[lineage.HAR_FIELD] = {
+                "id": flow.id,
+                "root_id": lin["root_id"],
+                "parent_id": lin["parent_id"],
+                "attempt": lin["attempt"],
+                "origin": lin["origin"],
+            }
         return entry
 
     def format_response_cookies(self, response: http.Response) -> list[dict]:

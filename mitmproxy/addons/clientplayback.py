@@ -15,6 +15,7 @@ from mitmproxy import exceptions
 from mitmproxy import flow
 from mitmproxy import http
 from mitmproxy import io
+from mitmproxy import lineage
 from mitmproxy.connection import ConnectionState
 from mitmproxy.connection import Server
 from mitmproxy.hooks import UpdateHook
@@ -154,6 +155,9 @@ class ClientPlayback:
         self.inflight = None
         self.task = None
         self.replay_tasks = set()
+        # Highest client replay attempt number per root lineage id,
+        # used to distinguish concurrent replay attempts.
+        self.replay_attempts: dict[str, int] = {}
 
     def running(self):
         self.options = ctx.options
@@ -277,13 +281,26 @@ class ClientPlayback:
 
             http_flow = cast(http.HTTPFlow, f)
 
+            if lineage.enabled():
+                # With lineage tracking enabled, each replay runs on a fresh
+                # attempt flow that preserves the root relationship. The
+                # source flow is never mutated, so cancelling or failing the
+                # replay cannot leave a half-established relationship.
+                attempt = lineage.next_replay_attempt(
+                    http_flow, self.replay_attempts
+                )
+                replay_flow = cast(http.HTTPFlow, http_flow.copy())
+                lineage.derive_replay(http_flow, replay_flow, attempt)
+            else:
+                replay_flow = http_flow
+
             # Prepare the flow for replay
-            http_flow.backup()
-            http_flow.is_replay = "request"
-            http_flow.response = None
-            http_flow.error = None
-            self.queue.put_nowait(http_flow)
-            updated.append(http_flow)
+            replay_flow.backup()
+            replay_flow.is_replay = "request"
+            replay_flow.response = None
+            replay_flow.error = None
+            self.queue.put_nowait(replay_flow)
+            updated.append(replay_flow)
         ctx.master.addons.trigger(UpdateHook(updated))
 
     @command.command("replay.client.file")

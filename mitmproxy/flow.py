@@ -11,6 +11,7 @@ from typing import ClassVar
 
 from mitmproxy import connection
 from mitmproxy import exceptions
+from mitmproxy import lineage
 from mitmproxy import version
 from mitmproxy.coretypes import serializable
 
@@ -196,6 +197,7 @@ class Flow(serializable.Serializable):
         """Make a copy of this flow."""
         f = super().copy()
         f.live = False
+        lineage.on_copy(self, f)
         return f
 
     def modified(self):

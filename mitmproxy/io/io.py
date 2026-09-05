@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 from collections.abc import Iterable
 from io import BufferedReader
 from typing import Any
@@ -10,6 +11,7 @@ from typing import Union
 from mitmproxy import exceptions
 from mitmproxy import flow
 from mitmproxy import flowfilter
+from mitmproxy import lineage
 from mitmproxy.io import compat
 from mitmproxy.io import tnetstring
 from mitmproxy.io.har import request_to_flow
@@ -45,6 +47,11 @@ class FlowReader:
         Yields Flow objects from the dump.
         """
 
+        # A random per-reader namespace used to derive isolated, traceable
+        # lineage ids for imported flows. It is reset for each file/stream so
+        # that importing the same content twice never reuses identifiers.
+        namespace = uuid.uuid4()
+
         if self.peek(4).startswith(
             b"\xef\xbb\xbf{"
         ):  # skip BOM, usually added by Fiddler
@@ -54,7 +61,11 @@ class FlowReader:
                 har_file = json.loads(self.fo.read().decode("utf-8"))
 
                 for request_json in har_file["log"]["entries"]:
-                    yield request_to_flow(request_json)
+                    yield lineage.on_import(
+                        request_to_flow(request_json),
+                        namespace,
+                        har_entry=request_json,
+                    )
 
             except Exception:
                 raise exceptions.FlowReadException(
@@ -72,7 +83,10 @@ class FlowReader:
                     try:
                         if not isinstance(loaded, dict):
                             raise ValueError(f"Invalid flow: {loaded=}")
-                        yield flow.Flow.from_state(compat.migrate_flow(loaded))
+                        yield lineage.on_import(
+                            flow.Flow.from_state(compat.migrate_flow(loaded)),
+                            namespace,
+                        )
                     except ValueError as e:
                         raise exceptions.FlowReadException(e) from e
             except (ValueError, TypeError, IndexError) as e:

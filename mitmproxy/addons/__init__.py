@@ -11,6 +11,7 @@ from mitmproxy.addons import cut
 from mitmproxy.addons import disable_h2c
 from mitmproxy.addons import dns_resolver
 from mitmproxy.addons import export
+from mitmproxy.addons import lineage
 from mitmproxy.addons import maplocal
 from mitmproxy.addons import mapremote
 from mitmproxy.addons import modifybody
@@ -34,6 +35,7 @@ from mitmproxy.addons import upstream_auth
 def default_addons():
     return [
         core.Core(),
+        lineage.Lineage(),
         browser.Browser(),
         block.Block(),
         strip_dns_https_records.StripDnsHttpsRecords(),

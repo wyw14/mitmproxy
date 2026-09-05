@@ -24,6 +24,7 @@ export interface OptionsState {
     dns_name_servers: string[];
     dns_use_hosts_file: boolean;
     export_preserve_original_ip: boolean;
+    flow_lineage: boolean;
     hardump: string;
     http2: boolean;
     http2_ping_keepalive: number;
@@ -132,6 +133,7 @@ export const defaultState: OptionsState = {
     dns_name_servers: [],
     dns_use_hosts_file: true,
     export_preserve_original_ip: false,
+    flow_lineage: false,
     hardump: "",
     http2: true,
     http2_ping_keepalive: 58,

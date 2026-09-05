@@ -1,0 +1,20 @@
+rubrics:
+  - id: 1
+    type: f2p
+    text: 启用关联能力后，原始 flow、复制结果和 replay 结果应显示同一根链路，并能区分每次 replay 尝试。
+
+  - id: 2
+    type: f2p
+    text: 导入重复内容或旧格式记录时，各条记录应获得隔离且可追踪的关联标识，不得因内容相同而互相复用标识。
+
+  - id: 3
+    type: f2p
+    text: 导入已经包含 replay 尝试的 flow 后再次 replay，应生成不重复且可区分的新尝试编号。
+
+  - id: 4
+    type: f2p
+    text: replay 被取消或失败时，不应留下不完整的关联关系或半条尝试记录。
+
+  - id: 5
+    type: p2p
+    text: 关联能力关闭时，既有 flow 的序列化、复制、加载和 replay 行为以及已有 metadata 必须保持兼容。
